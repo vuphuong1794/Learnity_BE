@@ -6,7 +6,18 @@ import { channel } from 'diagnostics_channel';
 @Injectable()
 export class NotificationService {
     async sendPush(notification: SendNotificationDto) {
+        const deviceId =
+            typeof notification.deviceId === 'string'
+                ? notification.deviceId
+                : notification.deviceId[0];
+
+        if (!deviceId) {
+            console.error('deviceId không tồn tại hoặc rỗng!');
+            throw new Error('deviceId is required');
+        }
+
         try {
+            console.log('Sending to deviceId:', deviceId); // Debug
             await firebase
                 .messaging()
                 .send({
@@ -14,7 +25,7 @@ export class NotificationService {
                         title: notification.title,
                         body: notification.body,
                     },
-                    token: notification.deviceId,
+                    token: deviceId,
                     data: {},
                     android: {
                         priority: 'high',
@@ -35,6 +46,8 @@ export class NotificationService {
                         },
                     }
                 });
+
+            return { success: true }
         } catch (error) {
             console.error('Error sending push notification:', error);
             throw new Error('Failed to send push notification');

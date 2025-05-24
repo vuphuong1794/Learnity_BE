@@ -5,13 +5,11 @@ import { AuthModule } from './auth/auth.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Otp, OtpSchema } from './schemas/otp.schema';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      cache: true
-    }),
+    ConfigModule.forRoot(),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -21,7 +19,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       },
       inject: [ConfigService],
     }),
-    AuthModule
+    AuthModule,
+    NotificationModule
   ],
   controllers: [AppController],
   providers: [AppService],

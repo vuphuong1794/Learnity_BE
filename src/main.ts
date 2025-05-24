@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { initializeFirebase } from './common/firebase-admin';
 
 async function bootstrap() {
-  initializeFirebase();
+  //initializeFirebase();
   const app = await NestFactory.create(AppModule);
   await app.listen(process.env.PORT ?? 3000);
 }

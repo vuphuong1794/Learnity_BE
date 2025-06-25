@@ -5,86 +5,84 @@ import { SendNotificationDto } from './dto/send-notification.dto';
 @Injectable()
 export class NotificationService {
     async sendPush(notification: SendNotificationDto) {
-        const deviceId =
-            typeof notification.deviceId === 'string'
-                ? notification.deviceId
-                : notification.deviceId[0];
+        const deviceIds = Array.isArray(notification.deviceId)
+            ? notification.deviceId.filter(Boolean)
+            : [notification.deviceId];
 
-        if (!deviceId) {
-            console.error('deviceId không tồn tại hoặc rỗng!');
+        if (!deviceIds || deviceIds.length === 0) {
+            console.error('Không có deviceId nào để gửi');
             throw new Error('deviceId is required');
         }
 
-        try {
-            console.log('Sending to deviceId:', deviceId);
-
-            const message = {
+        const messagePayload = {
+            notification: {
+                title: notification.title,
+                body: notification.body,
+            },
+            data: {
+                click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+            android: {
+                priority: 'high' as const,
                 notification: {
-                    title: notification.title,
-                    body: notification.body,
+                    sound: 'default',
+                    channelId: 'default',
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
                 },
-                token: deviceId,
-                data: {
-                    // Add any custom data here if needed
-                    click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+            apns: {
+                headers: {
+                    'apns-priority': '10',
                 },
-                android: {
-                    priority: 'high' as const,
-                    notification: {
+                payload: {
+                    aps: {
+                        contentAvailable: true,
                         sound: 'default',
-                        channelId: 'default',
-                        clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                        category: 'FLUTTER_NOTIFICATION_CLICK',
                     },
                 },
-                apns: {
-                    headers: {
-                        'apns-priority': '10',
-                    },
-                    payload: {
-                        aps: {
-                            contentAvailable: true,
-                            sound: 'default',
-                            category: 'FLUTTER_NOTIFICATION_CLICK',
-                        },
-                    },
-                }
-            };
+            }
+        };
 
-            const response = await firebase.messaging().send(message);
-            console.log('Successfully sent message:', response);
+        try {
+            if (deviceIds.length === 1) {
+                const response = await firebase.messaging().send({
+                    ...messagePayload,
+                    token: deviceIds[0],
+                });
 
-            return { success: true, messageId: response };
-        } catch (error) {
-            console.error('Error sending push notification:', error);
+                console.log('Sent to single token:', response);
+                return { success: true, messageId: response };
+            } else {
+                const response = await firebase.messaging().sendEachForMulticast({
+                    ...messagePayload,
+                    tokens: deviceIds,
+                });
 
-            // Handle specific Firebase errors
-            if (error.code === 'messaging/registration-token-not-registered') {
-                console.error('Token is not registered. The token may be expired or the app may have been uninstalled.');
+                console.log(`Sent multicast. Success: ${response.successCount}, Failure: ${response.failureCount}`);
+
+                const failedTokens: string[] = [];
+
+                response.responses.forEach((resp, idx) => {
+                    if (!resp.success) {
+                        console.warn(`Failed to send to ${deviceIds[idx]}:`, resp.error?.code);
+                        failedTokens.push(deviceIds[idx]);
+                    }
+                });
+
                 return {
-                    success: false,
-                    error: 'TOKEN_NOT_REGISTERED',
-                    message: 'FCM token is invalid or expired'
-                };
-            } else if (error.code === 'messaging/invalid-registration-token') {
-                console.error('Invalid registration token format.');
-                return {
-                    success: false,
-                    error: 'INVALID_TOKEN_FORMAT',
-                    message: 'FCM token format is invalid'
-                };
-            } else if (error.errorInfo?.message === 'Requested entity was not found.') {
-                console.error('FCM token not found. Token may be expired or app uninstalled.');
-                return {
-                    success: false,
-                    error: 'TOKEN_NOT_FOUND',
-                    message: 'FCM token not found - may be expired'
+                    success: response.failureCount === 0,
+                    successCount: response.successCount,
+                    failureCount: response.failureCount,
+                    failedTokens,
                 };
             }
-
-            // For other errors, still throw
+        } catch (error) {
+            console.error('Error sending push notification:', error);
             throw new Error(`Failed to send push notification: ${error.message}`);
         }
     }
+
 
     // New method to validate multiple tokens
     async validateTokens(tokens: string[]): Promise<{ validTokens: string[], invalidTokens: string[] }> {

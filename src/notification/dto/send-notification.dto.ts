@@ -6,5 +6,5 @@ export class SendNotificationDto {
     @ApiProperty()
     body: string;
     @ApiProperty()
-    deviceId: string;
+    deviceId: string | string[];
 }

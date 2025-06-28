@@ -5,7 +5,7 @@ export function initializeFirebase() {
     if (admin.apps.length === 0) {
         let serviceAccount;
 
-        if (process.env.isProd === 'true') {
+        if (process.env.isProd === "1") {
             // Trên production (Render), sử dụng environment variables
             serviceAccount = {
                 type: "service_account",

@@ -6,6 +6,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Otp, OtpSchema } from './schemas/otp.schema';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { NotificationModule } from './notification/notification.module';
+import { FirebaseAdminProvider } from './common/firebase-admin';
+import { FirebaseAdminModule } from './common/firebase-admin.module';
 
 @Module({
   imports: [
@@ -20,7 +22,8 @@ import { NotificationModule } from './notification/notification.module';
       inject: [ConfigService],
     }),
     AuthModule,
-    NotificationModule
+    NotificationModule,
+    FirebaseAdminModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -10,6 +10,7 @@ import * as nodemailer from 'nodemailer';
 export class AuthService {
     constructor(
         @InjectModel('Otp') private otpModel: Model<OtpDocument>,
+        @Inject('FIREBASE_ADMIN') private readonly firebaseAdmin: typeof admin,
     ) { }
 
     async sendOtp(email: string) {
@@ -66,4 +67,14 @@ export class AuthService {
 
         return { message: 'Mật khẩu đã được cập nhật' };
     }
+
+    async deleteUser(uid: string) {
+        try {
+          await this.firebaseAdmin.auth().deleteUser(uid);
+          await this.firebaseAdmin.firestore().collection('users').doc(uid).delete();
+          return { message: 'Tài khoản đã được xóa' };
+        } catch (error) {
+          throw new Error('Xóa tài khoản thất bại: ' + error.message);
+        }
+      }
 }
